@@ -1,0 +1,14 @@
+tamrin1
+![1](https://user-images.githubusercontent.com/88095232/140591567-c79816c9-f38b-4127-a2a4-a9f41a638fe3.PNG)
+tamrin2
+![2](https://user-images.githubusercontent.com/88095232/140591653-9c702055-7ef5-4c35-a712-cc87b3557088.PNG)
+tamrin3
+![3](https://user-images.githubusercontent.com/88095232/140611516-698c4f38-f4c8-4dd7-9bab-3960d8a0509e.PNG)
+tamrin4
+![4](https://user-images.githubusercontent.com/88095232/140591666-c1cb4edb-4348-4c18-9bde-60fc46a3bb4b.PNG)
+tamrin5
+![5](https://user-images.githubusercontent.com/88095232/140591967-a405296c-18a6-4d79-a7b2-8e8d714cde61.PNG)
+tamrin6
+![6](https://user-images.githubusercontent.com/88095232/140593872-8e155b64-f296-4e4e-92ef-dd422adb926e.PNG)
+tamrin7
+![7](https://user-images.githubusercontent.com/88095232/140592550-ae083c9e-a65e-45d6-97dd-49471e0598c0.PNG)
