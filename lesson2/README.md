@@ -12,5 +12,6 @@ tamrin5
 tamrin6
 ![6](https://user-images.githubusercontent.com/88095232/140593872-8e155b64-f296-4e4e-92ef-dd422adb926e.PNG)
 tamrin7
-![7](https://user-images.githubusercontent.com/88095232/140592550-ae083c9e-a65e-45d6-97dd-49471e0598c0.PNG)
+![Screenshot 2022-07-23 182304](https://user-images.githubusercontent.com/88095232/180608071-8499c407-a325-43f4-a53d-b705022bbed5.png)
+
 
