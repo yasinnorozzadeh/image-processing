@@ -18,6 +18,3 @@ assignment_2
  
 assignment_1
 ![tamrin1](https://user-images.githubusercontent.com/88095232/140067292-8e819357-512a-40e4-9d82-a2da80074604.PNG)
-
-# assignment_6
-![6](https://user-images.githubusercontent.com/88095232/140080080-a7dede76-37b3-421c-b90c-0fd57833aea5.PNG)
