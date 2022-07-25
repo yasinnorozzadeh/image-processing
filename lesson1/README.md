@@ -13,7 +13,7 @@
 # assignment_3
 ![3](https://user-images.githubusercontent.com/88095232/139539467-43b41c26-5908-47cd-861c-eaadcdef2512.PNG)
 
-assignment_2
+# assignment_2
  ![2](https://user-images.githubusercontent.com/88095232/140063934-506a1f29-9b37-4278-921d-b024b4ec296a.PNG)
  
 # assignment_1
