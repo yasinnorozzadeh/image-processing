@@ -1,7 +1,7 @@
-assignment_7
+# assignment_7
 ![7](https://user-images.githubusercontent.com/88095232/140084020-839db829-88b2-4f3b-b658-8bac0a645a38.PNG)
 
-assignment_6
+# assignment_6
 ![6](https://user-images.githubusercontent.com/88095232/140080080-a7dede76-37b3-421c-b90c-0fd57833aea5.PNG)
 
 assignment_5
