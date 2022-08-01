@@ -1,13 +1,15 @@
-#!/usr/bin/python3
-# -*- coding:utf-8 -*-
-
 import numpy as np
 import cv2
+from numpy.ma.core import left_shift
 import tensorflow as tf
 from functools import partial
-import time
 from TFLiteFaceDetector import UltraLightFaceDetecion
 import sys
+
+#left_eye = 35,36,33,37,39,42,40,41
+#righ_eye = 89,90,87,91,93,96,94,95
+#lips = 52,55,56,53,59,58,61,68,67,71 63,64
+
 
 class CoordinateAlignmentModel():
     def __init__(self, filepath, marker_nums=106, input_size=(192, 192)):
@@ -52,22 +54,6 @@ class CoordinateAlignmentModel():
             self.pre_landmarks = pred
 
     def _preprocessing(self, img, bbox, factor=3.0):
-        """Pre-processing of the BGR image. Adopting warp affine for face corp.
-
-        Arguments
-        ----------
-        img {numpy.array} : the raw BGR image.
-        bbox {numpy.array} : bounding box with format: {x1, y1, x2, y2, score}.
-
-        Keyword Arguments
-        ----------
-        factor : max edge scale factor for bounding box cropping.
-
-        Returns
-        ----------
-        inp : input tensor with NHWC format.
-        M : warp affine matrix.
-        """
 
         maximum_edge = max(bbox[2:4] - bbox[:2]) * factor
         scale = self._trans_distance * 4.0 / maximum_edge
@@ -101,20 +87,6 @@ class CoordinateAlignmentModel():
         return out @ iM.T  # dot product
 
     def get_landmarks(self, image, detected_faces=None):
-        """Predict the landmarks for each face present in the image.
-
-        This function predicts a set of 68 2D or 3D images, one for each image present.
-        If detect_faces is None the method will also run a face detector.
-
-        Arguments
-        ----------
-        image {numpy.array} : The input image.
-
-        Keyword Arguments
-        ----------
-        detected_faces {list of numpy.array} : list of bounding boxes, one for each
-        face found in the image (default: {None}, format: {x1, y1, x2, y2, score})
-        """
 
         for box in detected_faces:
             inp, M = self._preprocessing(image, box)
@@ -126,240 +98,103 @@ class CoordinateAlignmentModel():
 
             yield pred
 
-# left eye = 35, 36, 37, 33, 39, 42, 40, 41
-# right eye = 89, 90, 87, 91, 93, 96, 94, 95
-# lip = 52, 55, 56, 53, 56, 58, 69, 68, 67, 71, 63, 64
-def zoom(frame, landmarks):
-    x, y, w, h = cv2.boundingRect(landmarks)
-    rows, cols, _ = frame.shape
-    mask = np.zeros((rows, cols, 3), dtype="uint8")
-    cv2.drawContours(mask, [landmarks], -1, (255, 255, 255), -1)
 
-    frame_2x = cv2.resize(frame, None, fx=2, fy=2)
-    mask_2x = cv2.resize(mask, None, fx=2, fy=2)
-    frame_2x = frame_2x / 255
-    mask_2x = mask_2x / 255
+def warp_effect(frame,landmark,num1,num2):
+ 
+            x = min(landmark[:,0])
+            x_max = max(landmark[:,0])
+            y = min(landmark[:,1])
+            y_max = max(landmark[:,1])
+            w = x_max-x
+            h = y_max-y
+            median_x = (x+x_max)//2
+            median_y = (y+y_max)//2
+            
+            mask = np.zeros(frame.shape,np.uint8) 
+            cv2.drawContours(mask,[landmark],-1,(255,255,255),-1)
+            img_resize = cv2.resize(frame,(0,0),fx=num2,fy=num2)
+            img_resize=img_resize / 255
+            mask_resize = cv2.resize(mask,(0,0),fx=num2,fy=num2)
+            mask_resize=mask_resize / 255
+            image = frame[int(median_y - (num1*h)):int(median_y+(num1*h)),int(median_x-(num1*w)):int(median_x+(num1*w))]
+            image=image / 255
+            try:
+                forground = cv2.multiply(mask_resize,img_resize)
+                background = cv2.multiply(image,1-mask_resize[y*num2:(y+h)*num2,x*num2:(x+w)*num2])
+                resualt = cv2.add(background,forground[y*num2:(y+h)*num2,x*num2:(x+w)*num2])
+                resualt = resualt*255
+                frame[int(median_y - (num1*h)):int(median_y+(num1*h)),int(median_x-(num1*w)):int(median_x+(num1*w))]= resualt
+            except:
+                 pass
 
-    frame_target = frame[int(y-(h*0.5)):int(y+h+(h*0.5)), int(x-(w*0.5)): int(x+w+(w*0.5))]
-    frame_target = frame_target / 255
+            # ---------> ((y_min+y_max)/2) -/+ h     |2x
+            # ---------> ((x_min+x_max)/2) -/+ w     |2x
 
-    forground = cv2.multiply(mask_2x, frame_2x)
-    background = cv2.multiply(frame_target, 1 - mask_2x[y*2 : (y+h)*2, x*2 : (x+w)*2])
-    result = cv2.add(background, forground[y*2 : (y+h)*2, x*2 : (x+w)*2])
-    frame[int(y-(0.5*h)):int(y+h+(0.5*h)), int(x-(0.5*w)): int(x+w+(0.5*w))] = result * 255
-    return frame
+            # ---------> ((y_min+y_max)/2) -/+ 2*h   |4x
+            # ---------> ((x_min+x_max)/2) -/+ 2*w   |4x
+
+            # ---------> ((y_min+y_max)/2) -/+ 1.5*h |3x 
+            # ---------> ((x_min+x_max)/2) -/+ 1.5*w |3x
+
+            return frame
+    
+
 if __name__ == '__main__':
-
-    fd = UltraLightFaceDetecion("weights/RFB-320.tflite", conf_threshold=0.88)
+    fd = UltraLightFaceDetecion("weights/RFB-320.tflite",conf_threshold=0.88)
     fa = CoordinateAlignmentModel("weights/coor_2d106.tflite")
 
+
     cap = cv2.VideoCapture(0)
+    format = cv2.VideoWriter_fourcc(*"XVID")
+    save = cv2.VideoWriter("video.mp4",format,20.0,(640, 480))
     while True:
-        ret, frame = cap.read()
-
-        if not ret:
-            break
-        #image = cv2.resize(image, (0, 0), fx=0.5, fy=0.5)
-        rows, cols, _ = frame.shape
-        
-
-        mask = np.zeros((rows, cols, 3), dtype="uint8")
-
-
+        ret , frame = cap.read()
         boxes, scores = fd.inference(frame)
 
         for pred in fa.get_landmarks(frame, boxes):
             pred_int = np.round(pred).astype(np.int)
 
-            landmarks_left_eye = []
-            for i in [35, 36, 37, 33, 39, 42, 40, 41]:
-                landmarks_left_eye.append(tuple(pred_int[i]))
+            eye_left = [35,36,33,37,39,42,40,41]
+            landmark_left_eye = []
+            for i in eye_left:
+                landmark_left_eye.append(tuple(pred_int[i]))
             
-            landmarks_right_eye = []
-            for i in [89, 90, 87, 91, 93, 96, 94, 95]:
-                landmarks_right_eye.append(tuple(pred_int[i]))
+            eye_right = [89,90,87,91,93,96,94,95]
+            landmark_right_eye = []
+            for i in eye_right:
+                landmark_right_eye.append(tuple(pred_int[i]))
 
-            landmarks_lips = []
-            for i in [52, 55, 56, 53, 56, 58, 69, 68, 67, 71, 63, 64]:
-                landmarks_lips.append(tuple(pred_int[i]))
 
-            landmarks_left_eye = np.array(landmarks_left_eye)
-            landmarks_right_eye = np.array(landmarks_right_eye)
-            landmarks_lips = np.array(landmarks_lips)
+            lips = [52,55,56,53,59,58,61,68,67,71,63,64]
+            landmark_lips = []
+            for i in lips:
+                landmark_lips.append(tuple(pred_int[i]))
+            
+            landmark_left_eye = np.array(landmark_left_eye)
+            landmark_right_eye = np.array(landmark_right_eye)
+            landmark_lips = np.array(landmark_lips)
 
-            frame = zoom(frame, landmarks_lips)
-            frame = zoom(frame, landmarks_left_eye)
-            frame = zoom(frame, landmarks_right_eye)
-            # cv2.drawContours(mask, [landmarks_left_eye], -1, (255, 255, 255), -1)
-            # cv2.drawContours(mask, [landmarks_right_eye], -1, (255, 255, 255), -1)
-            # cv2.drawContours(mask, [landmarks_lips], -1, (255, 255, 255), -1)
-            # for Index, p in enumerate (landmarks_left_eye):
-            #     # print(p, Index)
-            #     cv2.circle(image, tuple(p), 1, (125, 255, 125), 1, cv2.LINE_AA)
-            #     cv2.putText(image, str(Index), p, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-        # mask = mask / 255
-        # result = mask * image
-        # cv2.imwrite("out_put/result.jpg", frame)
-        cv2.imshow("result", frame)
-        if cv2.waitKey(1) == ord("q"):
+            # for i,p in enumerate(np.round(pred).astype(np.int)):
+            #     cv2.circle(img, tuple(p), 1, (125, 255, 125), 1, cv2.LINE_AA)
+            #     cv2.putText(img,str(i),tuple(p),cv2.FONT_HERSHEY_COMPLEX,0.25,(0,0,255),1)
+            #     print(i,p)
+            
+            _,y1 = pred_int[60]
+            _,y2 = pred_int[62]
+
+            warp_effect(frame,landmark_left_eye,1,2)
+            warp_effect(frame,landmark_right_eye,1,2)
+            if 5 <= y1-y2 <=15:
+                warp_effect(frame,landmark_lips,1,2)
+            if 16<= y1-y2 <=27:
+                warp_effect(frame,landmark_lips,1.5,3)
+            if 28<= y1-y2:
+                warp_effect(frame,landmark_lips,2,4)
+        save.write(frame)
+        cv2.imshow("Face warp effect",frame)
+        if cv2.waitKey(1) & 0xFF==ord("0"):
             break
+
 cap.release()
+save.release()
 cv2.destroyAllWindows()
-
-
-
-
-
-
-# def zoom(frame, landmarks):
-#     x, y, w, h = cv2.boundingRect(landmarks)
-#     rows, cols, _ = frame.shape
-#     mask = np.zeros((rows, cols, 3), dtype="uint8")
-#     cv2.drawContours(mask, [landmarks], -1, (255, 255, 255), -1)
-
-#     frame_2x = cv2.resize(frame, None, fx=2, fy=2)
-#     mask_2x = cv2.resize(mask, None, fx=2, fy=2)
-#     frame_2x = frame_2x / 255
-#     mask_2x = mask_2x / 255
-
-#     frame_target = frame[int(y-(h*0.5)):int(y+h+(h*0.5)), int(x-(w*0.5)): int(x+w+(w*0.5))]
-#     frame_target = frame_target / 255
-
-#     forground = cv2.multiply(mask_2x, frame_2x)
-#     background = cv2.multiply(frame_target, 1 - mask_2x[y*2 : (y+h)*2, x*2 : (x+w)*2])
-#     result = cv2.add(background, forground[y*2 : (y+h)*2, x*2 : (x+w)*2])
-#     frame[int(y-(0.5*h)):int(y+h+(0.5*h)), int(x-(0.5*w)): int(x+w+(0.5*w))] = result * 255
-#     return frame
-# if __name__ == '__main__':
-
-#     fd = UltraLightFaceDetecion("weights/RFB-320.tflite", conf_threshold=0.88)
-#     fa = CoordinateAlignmentModel("weights/coor_2d106.tflite")
-
-#     frame = cv2.imread("input\ec1d076a998ce1ef5fdcc9e946401b1e.jpg")
-#     #image = cv2.resize(image, (0, 0), fx=0.5, fy=0.5)
-#     rows, cols, _ = frame.shape
-    
-
-#     mask = np.zeros((rows, cols, 3), dtype="uint8")
-
-
-#     boxes, scores = fd.inference(frame)
-
-#     for pred in fa.get_landmarks(frame, boxes):
-#         pred_int = np.round(pred).astype(np.int)
-
-#         landmarks_left_eye = []
-#         for i in [35, 36, 37, 33, 39, 42, 40, 41]:
-#             landmarks_left_eye.append(tuple(pred_int[i]))
-        
-#         landmarks_right_eye = []
-#         for i in [89, 90, 87, 91, 93, 96, 94, 95]:
-#             landmarks_right_eye.append(tuple(pred_int[i]))
-
-#         landmarks_lips = []
-#         for i in [52, 55, 56, 53, 56, 58, 69, 68, 67, 71, 63, 64]:
-#             landmarks_lips.append(tuple(pred_int[i]))
-
-#         landmarks_left_eye = np.array(landmarks_left_eye)
-#         landmarks_right_eye = np.array(landmarks_right_eye)
-#         landmarks_lips = np.array(landmarks_lips)
-
-#         frame = zoom(frame, landmarks_lips)
-#         frame = zoom(frame, landmarks_left_eye)
-#         frame = zoom(frame, landmarks_right_eye)
-#         # cv2.drawContours(mask, [landmarks_left_eye], -1, (255, 255, 255), -1)
-#         # cv2.drawContours(mask, [landmarks_right_eye], -1, (255, 255, 255), -1)
-#         # cv2.drawContours(mask, [landmarks_lips], -1, (255, 255, 255), -1)
-#         # for Index, p in enumerate (landmarks_left_eye):
-#         #     # print(p, Index)
-#         #     cv2.circle(image, tuple(p), 1, (125, 255, 125), 1, cv2.LINE_AA)
-#         #     cv2.putText(image, str(Index), p, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-#     # mask = mask / 255
-#     # result = mask * image
-#     cv2.imwrite("out_put/result.jpg", frame)
-#     cv2.imshow("result", frame)
-#     cv2.waitKey()
-
-# if __name__ == '__main__':
-
-#     fd = UltraLightFaceDetecion("weights/RFB-320.tflite", conf_threshold=0.88)
-#     fa = CoordinateAlignmentModel("weights/coor_2d106.tflite")
-
-#     image = cv2.imread("input\ec1d076a998ce1ef5fdcc9e946401b1e.jpg")
-#     #image = cv2.resize(image, (0, 0), fx=0.5, fy=0.5)
-#     rows = image.shape[0]
-#     cols = image.shape[1]
-
-#     mask = np.zeros((rows, cols, 3), dtype="uint8")
-
-
-#     boxes, scores = fd.inference(image)
-
-#     for pred in fa.get_landmarks(image, boxes):
-#         pred_int = np.round(pred).astype(np.int)
-
-#         landmarks_left_eye = []
-#         for i in [35, 36, 37, 33, 39, 42, 40, 41]:
-#             landmarks_left_eye.append(tuple(pred_int[i]))
-        
-#         landmarks_right_eye = []
-#         for i in [89, 90, 87, 91, 93, 96, 94, 95]:
-#             landmarks_right_eye.append(tuple(pred_int[i]))
-
-#         landmarks_lips = []
-#         for i in [52, 55, 56, 53, 56, 58, 69, 68, 67, 71, 63, 64]:
-#             landmarks_lips.append(tuple(pred_int[i]))
-
-#         landmarks_left_eye = np.array([landmarks_left_eye])
-#         landmarks_right_eye = np.array([landmarks_right_eye])
-#         landmarks_lips = np.array([landmarks_lips])
-
-
-#         cv2.drawContours(mask, [landmarks_left_eye], -1, (255, 255, 255), -1)
-#         cv2.drawContours(mask, [landmarks_right_eye], -1, (255, 255, 255), -1)
-#         cv2.drawContours(mask, [landmarks_lips], -1, (255, 255, 255), -1)
-#         # for Index, p in enumerate (landmarks_left_eye):
-#         #     # print(p, Index)
-#         #     cv2.circle(image, tuple(p), 1, (125, 255, 125), 1, cv2.LINE_AA)
-#         #     cv2.putText(image, str(Index), p, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-#     mask = mask / 255
-#     result = mask * image
-#     cv2.imwrite("out_put/result.jpg", result)
-#     cv2.imshow("result", result)
-#     cv2.waitKey()
-
-
-
-# if __name__ == '__main__':
-
-#     from TFLiteFaceDetector import UltraLightFaceDetecion
-#     import sys
-
-#     fd = UltraLightFaceDetecion(
-#         "weights/RFB-320.tflite",
-#         conf_threshold=0.88)
-#     fa = CoordinateAlignmentModel(
-#         "weights/coor_2d106.tflite")
-
-#     cap = cv2.VideoCapture(sys.argv[1])
-#     color = (125, 255, 125)
-
-#     while True:
-#         ret, frame = cap.read()
-
-#         if not ret:
-#             break
-
-#         start_time = time.perf_counter()
-
-#         boxes, scores = fd.inference(frame)
-
-#         for pred in fa.get_landmarks(frame, boxes):
-#             for p in np.round(pred).astype(np.int):
-#                 cv2.circle(frame, tuple(p), 1, color, 1, cv2.LINE_AA)
-
-#         print(time.perf_counter() - start_time)
-
-#         cv2.imshow("result", frame)
-#         if cv2.waitKey(0) == ord('q'):
-#             break
