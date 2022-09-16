@@ -9,6 +9,5 @@
 ## color piker
 ![Screenshot 2022-09-17 000517](https://user-images.githubusercontent.com/88095232/190717116-fc1a40fc-ff24-4415-8a69-7ebc5fabaeb7.png)
 ![Screenshot 2022-09-17 000553](https://user-images.githubusercontent.com/88095232/190717119-37e50d9d-c295-4053-9547-13bbc4a65a5d.png)
-## .
+## color scan
 https://user-images.githubusercontent.com/88095232/190715393-1ad6b4f8-8137-414d-b726-b0c69440e2d8.mp4
-
