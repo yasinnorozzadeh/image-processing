@@ -9,13 +9,13 @@ while True:
     frame = cv2.resize(frame, (800, 800))
     width, height, _ = frame.shape
     blur = cv2.blur(frame,(50,50))
-    rectangle = frame[(width//2)-100:(width//2)+100,(height//2)-100:(height//2)+100]
-    blur[(width//2)-100:(width//2)+100,(height//2)-100:(height//2)+100] = rectangle
+    rectangle = frame[300:500,300:500]
+    blur[300:500,300:500] = rectangle
 
     R = int(np.mean(rectangle[:,:,2]))
     G = int(np.mean(rectangle[:,:,1]))
     B = int(np.mean(rectangle[:,:,0]))
-    
+
     if 150 < R <= 255 and 150 < G <= 255 and 150 < B <= 255:
         rgb_color = "White"
     elif 0 <= R <= 100 and 0 <= G <= 100 and 0 <= B <= 100:
